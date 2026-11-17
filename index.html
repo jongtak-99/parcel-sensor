@@ -30,12 +30,12 @@
     <section class="viewer" aria-label="회전 가능한 3D 택배 상자">
       <div class="viewer-title">PACKAGE / 3D VIEW</div><div id="scene" role="img" aria-label="3D 상자를 불러오는 중"></div>
       <div id="loading" role="status">3D 상자를 불러오는 중…</div>
-      <p class="hint">드래그하여 360° 회전 · 두 손가락 또는 휠로 확대</p><div class="strength"><div class="scale" role="progressbar" aria-label="측정 기록 시각화" aria-valuemin="0" aria-valuemax="200" aria-valuenow="0"><i id="intensity"></i></div><div class="scale-label"><span id="scale-start">0 g</span><span id="scale-title">보정피크 · 표시 범위</span><span id="scale-end">200 g 이상</span></div><p id="shade-note"></p></div>
+      <p class="hint">드래그하여 360° 회전 · 두 손가락 또는 휠로 확대</p><div class="strength"><p id="shade-note"></p></div>
       <p id="asset-status" role="status"></p>
     </section>
     <section class="card" aria-labelledby="result-title" aria-live="polite">
       <div id="badge" class="badge">기록 확인 중</div><h2 id="result-title">배송 충격 기록</h2>
-      <dl><div><dt>충격 방향</dt><dd id="face">—</dd></div><div><dt>충격 발생 시각 (한국 시간)</dt><dd id="time">—</dd></div><div><dt>누적 기준 초과</dt><dd id="tag-count">미확인</dd></div><div><dt>보정피크</dt><dd id="peak">미확인</dd></div><div><dt>설정 임계값</dt><dd id="threshold">미확인</dd></div><div><dt>시각 출처</dt><dd id="source">NFC URL</dd></div></dl>
+      <dl><div><dt>충격 방향</dt><dd id="face">—</dd></div><div><dt>충격 발생 시각 (한국 시간)</dt><dd id="time">—</dd></div><div><dt>누적 기준 초과</dt><dd id="tag-count">미확인</dd></div><div><dt>시각 출처</dt><dd id="source">NFC URL</dd></div></dl>
       <p id="detail" class="note"></p>
       <details class="live-panel"><summary>태그 원본과 연결 상태</summary><dl><div><dt>태그에 저장된 상태</dt><dd id="tag-state">미확인</dd></div><div><dt>장치 ID</dt><dd id="device-id">—</dd></div></dl><span id="live-status" class="badge unknown" role="status">오프라인 · 연결 확인 중</span><dl><div><dt>현재 상태</dt><dd id="current-state">미확인</dd></div><div><dt>최신 충격 시각</dt><dd id="latest-impact">미확인</dd></div><div><dt>서버 갱신 시각</dt><dd id="updated">미확인</dd></div></dl></details>
       <details class="history-panel"><summary>저장된 충격 이력</summary><ul id="history"><li>연결 후 확인할 수 있습니다.</li></ul></details><button id="reset" type="button">상자 시점 초기화</button>
@@ -67,34 +67,25 @@
     if(record.test){$('result-title').textContent='연결 시험: 충격 표시';$('badge').textContent='연결 시험 · 실제 측정 아님';}
     $('time').textContent=alarm?date(record.epoch):'—';
     $('tag-count').textContent=record.count===null?'미확인':record.count+'회';
-    $('peak').textContent=alarm && record.peak!==null?record.peak.toFixed(1)+' g':'미확인';
-    $('threshold').textContent=record.threshold>0?record.threshold.toFixed(1)+' g':'미확인';
     $('face').textContent='방향 미확인';
     // A rendering scale, not an inference of damage or the struck face.
     const ratio=alarm && record.peak!==null ? Math.min(record.peak/200,1) : 0;
     const countRatio=record.count===null?0:Math.min(record.count/10,1);
-    const darkness=alarm ? (record.peak!==null?.12+.58*ratio:.18+.42*countRatio) : 0;
+    const darkness=alarm ? .45 : 0;
     window.parcelVisual={alarm,darkness,known:record.valid};
     window.dispatchEvent(new CustomEvent('parcel-state',{detail:window.parcelVisual}));
     const byCount=alarm && record.peak===null;
-    $('shade-note').textContent=alarm?(byCount?'보정피크가 없어 누적 기준 초과 횟수에 따라 어둡게 표시합니다.':'보정피크가 클수록 상자 전체가 어두워집니다.')+' 충격 방향이나 실제 파손을 뜻하지 않습니다.':'상자를 움직여 모든 면을 살펴보세요.';
-    $('scale-start').textContent=byCount?'0회':'0 g';
-    $('scale-title').textContent=byCount?'누적 기준 초과 · 표시 범위':'보정피크 · 표시 범위';
-    $('scale-end').textContent=byCount?'10회 이상':'200 g 이상';
-    $('intensity').style.width=(alarm?(byCount?countRatio:ratio)*100:0)+'%';
-    $('intensity').parentElement.setAttribute('aria-valuemax',byCount?'10':'200');
-    $('intensity').parentElement.setAttribute('aria-valuenow',String(byCount?(record.count??0):(record.peak??0)));
+    $('shade-note').textContent=alarm?'기준 이상의 충격이 감지되었습니다. 실제 파손 여부는 물품을 확인해 주세요.':'상자를 움직여 모든 면을 살펴보세요.';
     if(record.test){
       $('tag-count').textContent='실제 충격 횟수에 포함하지 않음';
       $('shade-note').textContent='연결 시험 신호에 따른 화면 표시입니다. 실제 가속도나 파손 측정이 아닙니다.';
-      $('scale-title').textContent='연결 시험 · 측정값 없음';
     }
   }
   paint(snapshot);
   $('tag-state').textContent=connectionTest?'연결 시험 · '+date(snapshot.epoch):!valid?'유효한 장치 기록 없음':snapshot.alarm?'충격 감지 · '+date(snapshot.epoch):'충격 없음';
   $('device-id').textContent=id||'—';
   $('source').textContent=connectionTest?'연결 시험 시각':!valid?'기록 없음':({rtc:'장치 RTC · PC 동기화',pc:'PC 동기화 시각',recorded:'장치 저장 시각',unknown:'시각 출처 미확인'})[params.get('source')]||'시각 출처 미확인';
-  $('detail').textContent='보정피크는 중력·정지 기준을 뺀 최대 가속도(g)입니다. 충격량(N·s)이나 실제 파손을 의미하지 않습니다.';
+  $('detail').textContent='설정 기준 이상의 충격 감지 여부와 발생 시간을 표시합니다. 실제 물품의 파손 여부를 판정하지 않습니다.';
   if(connectionTest)$('detail').textContent='전자종이와 NFC 연결 확인용 신호입니다. 실제 충격 측정·실험 기록에는 포함되지 않습니다.';
   let hadResponse=false, cloudRecord=null, stopped=false;
   async function poll() {

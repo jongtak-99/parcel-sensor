@@ -47,7 +47,20 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const params = new URLSearchParams(location.search);
+  function readTagParams() {
+    const incoming=new URLSearchParams(location.search);
+    const board=incoming.get('id');
+    // Keep the original tag snapshot available when this cleaned history entry reloads.
+    if(board && [...incoming.keys()].every(key=>key==='id')) {
+      try {
+        const saved=history.state?.parcelTagQuery;
+        const cached=typeof saved==='string'?new URLSearchParams(saved):null;
+        if(cached && (cached.get('id')||'').toLowerCase()===board.toLowerCase())return cached;
+      } catch (_) {}
+    }
+    return incoming;
+  }
+  const params = readTagParams();
   const integer = v => /^(0|[1-9]\d{0,10})$/.test(String(v ?? '')) ? Number(v) : null;
   const epoch = v => { const n=integer(v); return n>=1700000000 && n<4102444800 ? n : null; };
   const acceleration = v => v!==null && v!=='' && Number.isFinite(Number(v)) && Number(v)>=0 && Number(v)<=350 ? Number(v) : null;
@@ -59,6 +72,13 @@
   const snapshot = {valid:valid||connectionTest,test:connectionTest,alarm:(valid||connectionTest) && params.get('impact')==='1',epoch:valid||connectionTest?epoch(params.get('ts')):null,
     count:valid?integer(params.get('count')):null,peak:valid?acceleration(params.get('peak')):null,
     threshold:valid?acceleration(params.get('threshold')):null};
+  // Change only this page's address bar; do not navigate or write to NFC.
+  if(id && !rejected) {
+    try {
+      const state=history.state&&typeof history.state==='object'?history.state:{};
+      history.replaceState({...state,parcelTagQuery:params.toString()},'',location.pathname+'?id='+id+location.hash);
+    } catch (_) {}
+  }
   function paint(record) {
     const alarm=record.valid && record.alarm;
     $('result-title').textContent=!record.valid?'NFC 스티커를 태그해 주세요':alarm?'충격이 감지되었습니다':'충격 감지 없음';

@@ -87,12 +87,13 @@
     if(record.test){$('result-title').textContent='연결 시험: 충격 표시';$('badge').textContent='연결 시험 · 실제 측정 아님';}
     $('time').textContent=alarm?date(record.epoch):'—';
     $('tag-count').textContent=record.count===null?'미확인':record.count+'회';
-    $('face').textContent='방향 미확인';
+    const impactFace=alarm&&!record.test?'bottom':null;
+    $('face').textContent=record.test?'연결 시험':impactFace?'아랫면 충격 발생':'—';
     // A rendering scale, not an inference of damage or the struck face.
     const ratio=alarm && record.peak!==null ? Math.min(record.peak/200,1) : 0;
     const countRatio=record.count===null?0:Math.min(record.count/10,1);
     const darkness=alarm ? .45 : 0;
-    window.parcelVisual={alarm,darkness,known:record.valid};
+    window.parcelVisual={alarm,darkness,known:record.valid,face:impactFace};
     window.dispatchEvent(new CustomEvent('parcel-state',{detail:window.parcelVisual}));
     const byCount=alarm && record.peak===null;
     $('shade-note').textContent=alarm?'기준 이상의 충격이 감지되었습니다. 실제 파손 여부는 물품을 확인해 주세요.':'상자를 움직여 모든 면을 살펴보세요.';
@@ -182,7 +183,8 @@
     const render=()=>renderer.render(scene,camera);
     function applyState(state){
       const shade=1-(state?.darkness||0);
-      for(const material of materials)material.color.setRGB(shade,shade,shade);
+      for(let i=0;i<materials.length;i++){const level=ordered[i]===state?.face?shade:1;materials[i].color.setRGB(level,level,level);}
+      host.dataset.impactFace=state?.face||'';
       host.dataset.darkness=String(state?.darkness||0);
       render();
     }

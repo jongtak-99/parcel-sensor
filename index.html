@@ -35,7 +35,7 @@
     </section>
     <section class="card" aria-labelledby="result-title" aria-live="polite">
       <div id="badge" class="badge">기록 확인 중</div><h2 id="result-title">배송 충격 기록</h2>
-      <dl><div><dt>충격 방향</dt><dd id="face">—</dd></div><div><dt>충격 발생 시각 (한국 시간)</dt><dd id="time">—</dd></div><div><dt>누적 기준 초과</dt><dd id="tag-count">미확인</dd></div><div><dt>시각 출처</dt><dd id="source">NFC URL</dd></div></dl>
+      <dl><div><dt>충격 방향</dt><dd><span id="face">—</span><small style="display:block;font-size:12px;font-weight:400;color:#667c88;line-height:1.6;margin-top:6px">설정된 낙하면 기준 · 앞면 부착 / 아랫면 낙하</small></dd></div><div><dt>충격 발생 시각 (한국 시간)</dt><dd id="time">—</dd></div><div><dt>누적 기준 초과</dt><dd id="tag-count">미확인</dd></div><div><dt>시각 출처</dt><dd id="source">NFC URL</dd></div></dl>
       <p id="detail" class="note"></p>
       <details class="live-panel"><summary>태그 원본과 연결 상태</summary><dl><div><dt>태그에 저장된 상태</dt><dd id="tag-state">미확인</dd></div><div><dt>장치 ID</dt><dd id="device-id">—</dd></div></dl><span id="live-status" class="badge unknown" role="status">오프라인 · 연결 확인 중</span><dl><div><dt>현재 상태</dt><dd id="current-state">미확인</dd></div><div><dt>최신 충격 시각</dt><dd id="latest-impact">미확인</dd></div><div><dt>서버 갱신 시각</dt><dd id="updated">미확인</dd></div></dl></details>
       <details class="history-panel"><summary>저장된 충격 이력</summary><ul id="history"><li>연결 후 확인할 수 있습니다.</li></ul></details><button id="reset" type="button">상자 시점 초기화</button>
@@ -67,12 +67,13 @@
     if(record.test){$('result-title').textContent='연결 시험: 충격 표시';$('badge').textContent='연결 시험 · 실제 측정 아님';}
     $('time').textContent=alarm?date(record.epoch):'—';
     $('tag-count').textContent=record.count===null?'미확인':record.count+'회';
-    $('face').textContent='방향 미확인';
+    const impactFace=alarm&&!record.test?'bottom':null;
+    $('face').textContent=record.test?'연결 시험':impactFace?'아랫면 충격 발생':'—';
     // A rendering scale, not an inference of damage or the struck face.
     const ratio=alarm && record.peak!==null ? Math.min(record.peak/200,1) : 0;
     const countRatio=record.count===null?0:Math.min(record.count/10,1);
     const darkness=alarm ? .45 : 0;
-    window.parcelVisual={alarm,darkness,known:record.valid};
+    window.parcelVisual={alarm,darkness,known:record.valid,face:impactFace};
     window.dispatchEvent(new CustomEvent('parcel-state',{detail:window.parcelVisual}));
     const byCount=alarm && record.peak===null;
     $('shade-note').textContent=alarm?'기준 이상의 충격이 감지되었습니다. 실제 파손 여부는 물품을 확인해 주세요.':'상자를 움직여 모든 면을 살펴보세요.';
@@ -162,7 +163,8 @@
     const render=()=>renderer.render(scene,camera);
     function applyState(state){
       const shade=1-(state?.darkness||0);
-      for(const material of materials)material.color.setRGB(shade,shade,shade);
+      for(let i=0;i<materials.length;i++){const level=ordered[i]===state?.face?shade:1;materials[i].color.setRGB(level,level,level);}
+      host.dataset.impactFace=state?.face||'';
       host.dataset.darkness=String(state?.darkness||0);
       render();
     }
